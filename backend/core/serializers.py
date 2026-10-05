@@ -1,6 +1,8 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
-from .models import ClothRoll, DipRun, Loft
+from .models import ClothRoll, DipRun, Loft, ResinBand
 from .rules import can_mark_roll_cured
 
 
@@ -93,3 +95,35 @@ class DipRunSerializer(serializers.ModelSerializer):
             "created_at",
         )
         read_only_fields = ("id", "rollCode", "loftName", "created_at")
+
+
+class ResinBandSerializer(serializers.ModelSerializer):
+    lowerPct = serializers.DecimalField(
+        source="lower_pct", max_digits=5, decimal_places=2
+    )
+    upperPct = serializers.DecimalField(
+        source="upper_pct", max_digits=5, decimal_places=2
+    )
+    updatedAt = serializers.DateTimeField(source="updated_at", read_only=True)
+    updatedBy = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ResinBand
+        fields = ("lowerPct", "upperPct", "updatedAt", "updatedBy")
+
+    def get_updatedBy(self, obj):
+        return obj.updated_by.username if obj.updated_by else None
+
+    def validate(self, attrs):
+        lower = attrs.get("lower_pct")
+        upper = attrs.get("upper_pct")
+        for name, value in (("lowerPct", lower), ("upperPct", upper)):
+            if value is None:
+                continue
+            if value < Decimal("0") or value > Decimal("100"):
+                raise serializers.ValidationError(
+                    {name: "树脂百分比须落在 0 ~ 100 之间"}
+                )
+        if lower is not None and upper is not None and lower > upper:
+            raise serializers.ValidationError({"lowerPct": "下限不能大于上限"})
+        return attrs

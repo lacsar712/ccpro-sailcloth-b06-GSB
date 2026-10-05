@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -58,3 +59,27 @@ class DipRun(models.Model):
 
     def __str__(self):
         return f"Dip@{self.roll_id} {self.started_at}"
+
+
+class ResinBand(models.Model):
+    """
+    树脂带过滤设置（单行）：浸渍流水与浸渍台账共用的树脂百分比显示区间。
+    全表永远只保留一行；并发保存时后写整行覆盖先写，只留一版。
+    """
+
+    lower_pct = models.DecimalField(max_digits=5, decimal_places=2)
+    upper_pct = models.DecimalField(max_digits=5, decimal_places=2)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"树脂带 {self.lower_pct}% ~ {self.upper_pct}%"
