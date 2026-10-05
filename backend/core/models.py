@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -58,3 +59,37 @@ class DipRun(models.Model):
 
     def __str__(self):
         return f"Dip@{self.roll_id} {self.started_at}"
+
+
+class ResinBand(models.Model):
+    """
+    树脂带过滤设置（单行 singleton）。
+
+    全站只保留一版：保存即原地更新 pk=SINGLETON_PK 的行，
+    并发提交时后提交者覆盖先提交者，流水与台账读取同一行。
+    仅作显示过滤，不回写任何 DipRun.resin_pct。
+    """
+
+    SINGLETON_PK = 1
+
+    lower_pct = models.DecimalField(max_digits=5, decimal_places=2)
+    upper_pct = models.DecimalField(max_digits=5, decimal_places=2)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["id"]
+
+    def __str__(self):
+        return f"树脂带 {self.lower_pct}% ~ {self.upper_pct}%"
+
+    @classmethod
+    def current(cls):
+        """当前生效的树脂带；未设定时返回 None（不过滤）。"""
+        return cls.objects.filter(pk=cls.SINGLETON_PK).first()

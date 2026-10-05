@@ -4,6 +4,7 @@ import api from '../api'
 
 const dips = ref([])
 const rolls = ref([])
+const band = ref(null)
 const error = ref('')
 const form = reactive({
   rollId: null,
@@ -22,9 +23,14 @@ function localNow() {
 async function load() {
   error.value = ''
   try {
-    const [d, r] = await Promise.all([api.get('/dips/'), api.get('/rolls/')])
+    const [d, r, b] = await Promise.all([
+      api.get('/dips/'),
+      api.get('/rolls/'),
+      api.get('/resin-band/'),
+    ])
     dips.value = d.data.results || d.data
     rolls.value = r.data.results || r.data
+    band.value = b.data.band
     if (!form.rollId && rolls.value.length) form.rollId = rolls.value[0].id
     if (!form.startedAt) form.startedAt = localNow()
   } catch {
@@ -59,6 +65,10 @@ onMounted(load)
   <div>
     <h1>浸渍台账</h1>
     <p class="sub">次要全量列表。日常浸渍请在晾晒架右侧面板登记；时长 ≥ 12 小时后方可将对应布卷标为已固化。</p>
+    <p class="hint" style="margin:0 0 12px" v-if="band">
+      当前树脂带 {{ band.lowerPct }}% ~ {{ band.upperPct }}%，带外记录不列入本表（{{ dips.length }} 条）。
+    </p>
+    <p class="hint" style="margin:0 0 12px" v-else>未设定树脂带，本表显示全部记录。</p>
     <p v-if="error" class="error">{{ error }}</p>
 
     <form class="panel row" @submit.prevent="create">
@@ -104,5 +114,8 @@ onMounted(load)
         </tr>
       </tbody>
     </table>
+    <p v-if="!dips.length" class="hint" style="margin-top:10px">
+      {{ band ? '带内暂无浸渍记录（0 条）' : '暂无浸渍记录' }}
+    </p>
   </div>
 </template>

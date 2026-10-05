@@ -5,6 +5,7 @@ import api from '../api'
 const lofts = ref([])
 const rolls = ref([])
 const dips = ref([])
+const band = ref(null)
 const error = ref('')
 const panelError = ref('')
 const selectedId = ref(null)
@@ -44,14 +45,16 @@ const recentFeed = computed(() => dips.value.slice(0, 12))
 async function load() {
   error.value = ''
   try {
-    const [l, r, d] = await Promise.all([
+    const [l, r, d, b] = await Promise.all([
       api.get('/lofts/'),
       api.get('/rolls/'),
       api.get('/dips/'),
+      api.get('/resin-band/'),
     ])
     lofts.value = l.data.results || l.data
     rolls.value = r.data.results || r.data
     dips.value = d.data.results || d.data
+    band.value = b.data.band
   } catch {
     error.value = '晾晒架加载失败'
   }
@@ -177,7 +180,11 @@ onMounted(load)
 
     <section class="dip-feed panel">
       <h2 class="feed-title">浸渍流水</h2>
-      <p class="hint" style="margin: 0 0 12px">架下次要信息流；主操作在右侧布卷面板完成。</p>
+      <p class="hint" style="margin: 0 0 4px">架下次要信息流；主操作在右侧布卷面板完成。</p>
+      <p class="hint" style="margin: 0 0 12px" v-if="band">
+        当前树脂带 {{ band.lowerPct }}% ~ {{ band.upperPct }}%，仅显示带内记录（{{ recentFeed.length }} 条）。
+      </p>
+      <p class="hint" style="margin: 0 0 12px" v-else>未设定树脂带，显示全部记录。</p>
       <ul v-if="recentFeed.length" class="feed-list">
         <li v-for="row in recentFeed" :key="row.id">
           <strong>{{ row.rollCode }}</strong>
@@ -187,7 +194,7 @@ onMounted(load)
           <span>固化 {{ row.cureHours ?? '—' }} h</span>
         </li>
       </ul>
-      <p v-else class="hint" style="margin:0">暂无浸渍记录</p>
+      <p v-else class="hint" style="margin:0">{{ band ? '带内暂无浸渍记录（0 条）' : '暂无浸渍记录' }}</p>
     </section>
 
     <div
